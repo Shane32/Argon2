@@ -49,8 +49,6 @@ $a2id${parallelism}${iterations}${memorySize}${salt}${hash}
 | `salt` | The salt used to generate the hash, base-64 encoded |
 | `hash` | The hash of the password, base-64 encoded |
 
-The length of the salt is determined by the desired hash length.
-
 Example:
 
 ```
@@ -67,19 +65,67 @@ The above hash string was generated using the following parameters:
 | `hashLengthBits` | 64 bits         |
 | `password`       | `foobar`        |
 
-## Dependencies
-
-This uses the [Konscious.Security.Cryptography.Argon2](https://github.com/kmaragon/Konscious.Security.Cryptography)
-underlying library to create the Argon2 hash.
-
 ## Notes
 
-The [Konscious.Security.Cryptography.Argon2](https://github.com/kmaragon/Konscious.Security.Cryptography)
-library is a C# implementation of Argon2 and may be subject to side-channel attacks.
+- This uses the [Konscious.Security.Cryptography.Argon2](https://github.com/kmaragon/Konscious.Security.Cryptography)
+underlying library to create the Argon2 hash. The library is a C# implementation of Argon2 and
+may be subject to side-channel attacks.
 
-The Argon2id variant is used when creating hashes.
+- The Argon2id variant is used when creating hashes.
 
-The salt generation function uses the default .NET cryptographic random number generator.
+- The salt generation function uses the default .NET cryptographic random number generator
+and currently generates a salt of the same length as the desired hash length.
+
+- The password fed to the Argon2id implementation is the UTF-16 little-endian encoding of the password string.
+
+## Recommended parameters
+
+Current recommendations for Argon2 parameters vary widly based on the source
+and use case; some say:
+
+| Parameter        | Recommendation |
+|------------------|----------------|
+| `parallelism`    | Number of CPU cores on the server |
+| `iterations`     | 2-4 depending on the server hardware |
+| `memorySizeKb`   | 65,536 KB or as much as the server can comfortably handle |
+| `hashLengthBits` | 256 bits |
+| Salt length      | 128 bits |
+| Hashing time     | 0.5 seconds |
+
+The algorithm within `SelectParametersAsync` starts with the following parameters
+and then alternately doubles the iterations and memory size until the desired
+minimum hashing time is reached:
+
+| Parameter        | Value           |
+|------------------|-----------------|
+| `iterations`     | 1 iteration     |
+| `memorySizeKb`   | 4,096 kilobytes |
+
+On the hardware used for testing, the following parameters were generated with a
+minimum hashing time of 0.5 seconds and a `parallelism` value of 2:
+
+| Parameter        | Value            |
+|------------------|------------------|
+| `iterations`     | 16 iterations    |
+| `memorySizeKb`   | 65,536 kilobytes |
+
+The `SelectParametersAsync` algorithm was designed with a certain use case
+in mind and may not fit your needs.  It is also important to note that if the
+`SelectParametersAsync` algorithm is run concurrently with other tasks on the
+same machine, the generated parameters may be lower than typical.
+
+## Possible future features
+
+- Server password (for now, add the server password as a suffix to the password to be hashed;
+  this would not be a backwards compatible change)
+- Customizable salt length (does not require changes to the password format)
+- Support for Argon2, Argon2i, and Argon2d formats (would use unique prefix for each format)
+- Support for verifying BCrypt passwords
+- Integration of the underlying library to avoid the dependency
+- Use of another underlying library that is not subject to side-channel attacks
+- Execution of hash verification functions on a thread with a lower priority, and
+  execution of parameter selection functions on a thread with a higher priority
+- Wrapper to provide resistance to denial-of-service attacks
 
 ## Credits
 
