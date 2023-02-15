@@ -67,7 +67,7 @@ $a2id${parallelism}${iterations}${memorySize}${salt}${hash}
 |-|-|
 | `parallelism` | The number of lanes to use while processing the hash |
 | `iterations` | The base-2 logarithm of the number of iterations to apply to the password hash |
-| `memorySize` | The base-2 logarithm of amount of memory to use while processing the hash, in kilobytes |
+| `memorySize` | The base-2 logarithm of the number of kilobytes of memory to use while processing the hash |
 | `salt` | The salt used to generate the hash, base-64 encoded |
 | `hash` | The hash of the password, base-64 encoded |
 
@@ -103,7 +103,7 @@ may be subject to side-channel attacks.
 - The Argon2id variant is used when creating hashes.
 
 - The salt generation function uses the default .NET cryptographic random number generator
-and currently generates a salt of the same length as the desired hash length.
+and by default generates a salt of the same length as the desired hash length.
 
 - The password fed to the Argon2id implementation is the UTF-16 little-endian encoding of the password string.
 
