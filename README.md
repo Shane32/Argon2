@@ -8,30 +8,52 @@ containing the hash parameters, salt and hash.
 
 ## Usage
 
+The algorithm typically creates a single string containing both the hash parameters,
+salt and the hash itself.
+
 ```csharp
 using Shane32.Argon2;
 
 // Select a set of parameters to use that require at least 0.2 seconds of hashing time
-var parallelism = 2;
-var hashLengthBits = 256;
-var minTime = TimeSpan.FromSeconds(0.2);
-var parameters = await Argon2Library.SelectParametersAsync(parallelism, hashLengthBits, minTime);
+var parameters = await Argon2Library.SelectParametersAsync(
+    parallelism: 2,
+    minTime: TimeSpan.FromSeconds(0.2),
+    hashLengthBits: 256,
+    saltLengthBits: 128);
 
 // Create a hash with generated parameters
-var hash = await Argon2Library.HashAsync(parameters, "password");
+var hash = await Argon2Library.HashAsync("password", parameters);
 
 // Create a hash with custom parameters
 var hash2 = await Argon2Library.HashAsync(
+    "foobar",
     new Argon2Parameters(
         parallelism: 4,
         iterations: 16,
         memorySizeKb: 4096,
-        hashLengthBits: 64),
-    "foobar");
+        hashLengthBits: 64));
 
 // Verify a hash
-var ok = await Argon2Library.VerifyAsync(hash, "password");
+var ok = await Argon2Library.VerifyAsync("password", hash);
 ```
+
+You can also generate a string containing the parameters and salt separately
+from the hash:
+
+```csharp
+// Create a salt
+var salt = Argon2Library.CreateArgonSalt(parameters);
+
+// Create a hash
+var hash = await Argon2Library.HashAsync("password", salt, 256);
+
+// Verify a hash
+var ok = await Argon2Library.VerifyAsync("password", hash, salt);
+```
+
+It is also possible to create the hash with a known secret by passing
+a byte array to the above functions.  The hash does not contain the secret
+and will require the secret to verify the hash against a password.
 
 ## Format
 
@@ -64,6 +86,13 @@ The above hash string was generated using the following parameters:
 | `memorySizeKb`   | 4,096 kilobytes |
 | `hashLengthBits` | 64 bits         |
 | `password`       | `foobar`        |
+
+When the salt is stored separately from the hash, the salt string is the same
+as the hash described above, excluding the hash:
+
+| Salt | Hash |
+|------|------|
+| `$a2id$4$4$12$08ivHvoRWVg=$` | `Upe6Dg66bMM=` |
 
 ## Notes
 
@@ -116,9 +145,6 @@ same machine, the generated parameters may be lower than typical.
 
 ## Possible future features
 
-- Server password (for now, add the server password as a suffix to the password to be hashed;
-  this would not be a backwards compatible change)
-- Customizable salt length (does not require changes to the password format)
 - Support for Argon2, Argon2i, and Argon2d formats (would use unique prefix for each format)
 - Support for verifying BCrypt passwords
 - Integration of the underlying library to avoid the dependency
